@@ -2,6 +2,7 @@ import './public/env.js';
 import { fastify } from 'fastify';
 import fastifyStatic from '@fastify/static';
 import fastifyCookie from '@fastify/cookie';
+import fastifyCors from '@fastify/cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { connectDb } from './public/db.js';
@@ -19,6 +20,11 @@ const app = fastify();
 
 async function startApp() {
   try {
+    app.register(fastifyCors, {
+      origin: [/\.beef.dev/, 'https://beef.dev'],
+      credentials: true,
+    });
+
     app.register(fastifyCookie, {
       secret: process.env.COOKIE_SIGNATURE,
     });
