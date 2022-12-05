@@ -16,7 +16,10 @@ import {
   createVerifyEmailLink,
   validateVerifyEmail,
 } from './accounts/verify.js';
-import { createResetLink } from './accounts/forgotPassword.js';
+import {
+  createResetLink,
+  validateResetEmail,
+} from './accounts/forgotPassword.js';
 
 // ESM specific features
 const __filename = fileURLToPath(import.meta.url);
@@ -183,6 +186,31 @@ async function startApp() {
         // Link email contains user email, token, expiration date
 
         return response.code(200).send();
+      } catch (error) {
+        console.error(error);
+        return response.code(401).send();
+      }
+    });
+
+    // Reset Password Route
+    app.post('/api/reset', {}, async (request, response) => {
+      try {
+        const { email, password, token, time } = request.body;
+        const isValid = await validateResetEmail(token, email, time);
+        if (isValid) {
+          // Find User
+          const { user } = await import('./user/user.js');
+          const foundUser = await user.findOne({ 'email.address': email });
+
+          // Check make sure there is a user
+          if (foundUser._id) {
+            // Change Password
+            await changePassword(foundUser._id, password);
+            return response.code(200).send('Password Updated');
+          }
+        }
+
+        return response.code(401).send('Reset Failed');
       } catch (error) {
         console.error(error);
         return response.code(401).send();
