@@ -10,7 +10,13 @@ import { registerUser } from './accounts/register.js';
 import { authorizeUser } from './accounts/authorize.js';
 import { logUserIn } from './accounts/logUserIn.js';
 import { logUserOut } from './accounts/logUserOut.js';
-import { getUserFromCookies } from './accounts/user.js';
+import { getUserFromCookies, changePassword } from './accounts/user.js';
+import { sendEmail, mailInit } from './mail/index.js';
+import {
+  createVerifyEmailLink,
+  validateVerifyEmail,
+} from './accounts/verify.js';
+import { createResetLink } from './accounts/forgotPassword.js';
 
 // ESM specific features
 const __filename = fileURLToPath(import.meta.url);
@@ -20,6 +26,9 @@ const app = fastify();
 
 async function startApp() {
   try {
+    // Test send email
+    await mailInit();
+
     app.register(fastifyCors, {
       origin: [/\.beef.dev/, 'https://beef.dev'],
       credentials: true,
@@ -40,7 +49,16 @@ async function startApp() {
           request.body.email,
           request.body.password
         );
+
+        // If account creation was successful
         if (userId) {
+          const emailLink = await createVerifyEmailLink(request.body.email);
+          await sendEmail({
+            to: request.body.email,
+            subject: 'Verify your email',
+            html: `<a href='${emailLink}'>Verify</a>`,
+          });
+
           await logUserIn(userId, request, response);
         }
         response.send({
@@ -101,6 +119,73 @@ async function startApp() {
             status: 'FAILED',
           },
         });
+      }
+    });
+
+    app.post('/api/change-password', {}, async (request, response) => {
+      try {
+        const { oldPassword, newPassword } = request.body;
+        // Verify user login
+        const user = await getUserFromCookies(request, response);
+
+        if (user?.email?.address) {
+          // Compare current logged in user with form too re-auth
+          const { isAuthorized, userId } = await authorizeUser(
+            user.email.address,
+            request.body.oldPassword
+          );
+
+          // If user is who they say they are
+          if (isAuthorized) {
+            // Update password in db
+            await changePassword(userId, newPassword);
+            return response.code(200).send('It worked!');
+          }
+        }
+        return response.code(401).send();
+      } catch (error) {
+        return response.code(401).send();
+      }
+    });
+
+    // Verify Route
+    app.post('/api/verify', {}, async (request, response) => {
+      try {
+        const { token, email } = request.body;
+        const isValid = await validateVerifyEmail(token, email);
+
+        if (isValid) {
+          return response.code(200).send();
+        }
+        return response.code(401).send();
+      } catch (error) {
+        console.error(error);
+        return response.code(401).send();
+      }
+    });
+
+    // ForgotPassword Route
+    app.post('/api/forgot-password', {}, async (request, response) => {
+      try {
+        const { email } = request.body;
+        const link = await createResetLink(email);
+        // Send email with link
+        if (link) {
+          await sendEmail({
+            to: email,
+            subject: 'Reset your password',
+            html: `<a href='${link}'>Reset</a>`,
+          });
+        }
+        // Check to see if a user exist with that email
+        // If user exists
+        // Create email link
+        // Link email contains user email, token, expiration date
+
+        return response.code(200).send();
+      } catch (error) {
+        console.error(error);
+        return response.code(401).send();
       }
     });
 
