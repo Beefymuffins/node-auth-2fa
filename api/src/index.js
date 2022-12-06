@@ -1,4 +1,5 @@
 import './public/env.js';
+import { authenticator } from '@otplib/preset-default';
 import { fastify } from 'fastify';
 import fastifyStatic from '@fastify/static';
 import fastifyCookie from '@fastify/cookie';
@@ -10,7 +11,11 @@ import { registerUser } from './accounts/register.js';
 import { authorizeUser } from './accounts/authorize.js';
 import { logUserIn } from './accounts/logUserIn.js';
 import { logUserOut } from './accounts/logUserOut.js';
-import { getUserFromCookies, changePassword } from './accounts/user.js';
+import {
+  getUserFromCookies,
+  changePassword,
+  register2FA,
+} from './accounts/user.js';
 import { sendEmail, mailInit } from './mail/index.js';
 import {
   createVerifyEmailLink,
@@ -43,6 +48,45 @@ async function startApp() {
 
     app.register(fastifyStatic, {
       root: path.join(__dirname, 'public'),
+    });
+
+    app.get('/api/user', {}, async (request, response) => {
+      // Verify user login
+      const user = await getUserFromCookies(request, response);
+      if (user) return response.send({ data: { user } });
+      response.send({});
+    });
+
+    app.post('/api/register-2fa', {}, async (request, response) => {
+      // Verify user login
+      const user = await getUserFromCookies(request, response);
+      const { token, secret } = request.body;
+      const isValid = authenticator.verify({ token, secret });
+      if (user._id && isValid) {
+        await register2FA(user._id, secret);
+        response.send('success');
+      }
+      response.code(401).send();
+    });
+
+    app.post('/api/verify-2fa', {}, async (request, response) => {
+      // Verify user login
+      const { token, email, password } = request.body;
+      const { isAuthorized, userId, authenticatorSecret } = await authorizeUser(
+        email,
+        password
+      );
+
+      const isValid = authenticator.verify({
+        token,
+        secret: authenticatorSecret,
+      });
+
+      if (userId && isValid && isAuthorized) {
+        await logUserIn(userId, request, response);
+        response.send('success');
+      }
+      response.code(401).send();
     });
 
     // Register User Route
@@ -83,11 +127,10 @@ async function startApp() {
     // Authorize Route
     app.post('/api/authorize', {}, async (request, response) => {
       try {
-        const { isAuthorized, userId } = await authorizeUser(
-          request.body.email,
-          request.body.password
-        );
-        if (isAuthorized) {
+        const { isAuthorized, userId, authenticatorSecret } =
+          await authorizeUser(request.body.email, request.body.password);
+
+        if (isAuthorized && !authenticatorSecret) {
           await logUserIn(userId, request, response);
           response.send({
             data: {
@@ -95,7 +138,14 @@ async function startApp() {
               userId,
             },
           });
+        } else if (isAuthorized && authenticatorSecret) {
+          response.send({
+            data: {
+              status: '2FA',
+            },
+          });
         }
+        response.code(401).send();
         response.send({
           data: {
             status: 'FAILED',

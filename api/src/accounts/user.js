@@ -103,3 +103,22 @@ export async function changePassword(userId, newPassword) {
     console.log(error);
   }
 }
+
+export async function register2FA(userId, secret) {
+  try {
+    // Get User
+    const { user } = await import('../user/user.js');
+
+    // Update user
+    return user.updateOne(
+      {
+        _id: userId,
+      },
+      {
+        $set: { authenticator: secret },
+      }
+    );
+  } catch (error) {
+    console.log(error);
+  }
+}
