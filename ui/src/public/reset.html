@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" type="text/css" href="styles.css" />
+    <title>Node-Auth-UI</title>
+</head>
+
+<body>
+    <h1>Reset Password</h1>
+
+    <form id="reset-password-form">
+        <label for="password">Password
+            <input required type="password" name="password" placeholder="Password">
+        </label>
+
+        <button type="submit">Reset Password</button>
+    </form>
+
+
+    <script>
+        function getValues(form) {
+            // Iterate over the form returning the values. Then use reduce to get the name and value of object
+            return Object.values(form).reduce((obj, field) => {
+                if (field.name) {
+                    obj[field.name] = field.value;
+                }
+                return obj;
+            }, {});
+        }
+
+        // Reset Password Form // 
+
+        // Find form element
+        const resetForm = document.getElementById('reset-password-form');
+        resetForm.addEventListener('submit', reset)
+
+        async function reset(e) {
+            e.preventDefault(); // prevent page from refreshing when clicking submit
+            try {
+                const [email, time, token] = window.location.pathname.split('/').slice(-3)
+
+                const formValues = getValues(resetForm)
+                const values = {
+                    ...formValues,
+                    email: decodeURIComponent(email),
+                    time,
+                    token
+                }
+                // Submit form
+                const res = await fetch('https://api.beef.dev/api/reset', {
+                    method: 'POST',
+                    body: JSON.stringify(values),
+                    credentials: 'include',
+                    headers: {
+                        'Content-type': 'application/json; charset=UTF-8',
+                    },
+                });
+            } catch (error) {
+                console.error(error);
+            }
+        }
+    </script>
+</body>
+
+</html>

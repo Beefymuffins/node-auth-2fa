@@ -1,10 +1,14 @@
 import mongo from 'mongodb';
 import jwt from 'jsonwebtoken';
+import bcrypt from 'bcryptjs';
 import { createTokens } from './tokens.js';
+
+const { genSalt, hash } = bcrypt;
 
 const { ObjectId } = mongo;
 
 const JWTSignature = process.env.JWT_SIGNATURE;
+const { ROOT_DOMAIN } = process.env;
 
 export async function getUserFromCookies(request, response) {
   try {
@@ -59,16 +63,62 @@ export async function refreshTokens(sessionToken, userId, response) {
     response
       .setCookie('refreshToken', refreshToken, {
         path: '/',
-        domain: 'localhost',
+        domain: ROOT_DOMAIN,
         httpOnly: true,
+        secure: true, // Use caddy server to allow local host/https on safari server
         expires: refreshExpires,
       })
       .setCookie('accessToken', accessToken, {
         path: '/',
-        domain: 'localhost',
+        domain: ROOT_DOMAIN,
         httpOnly: true,
+        secure: true,
       });
   } catch (error) {
     console.error(error);
+  }
+}
+
+export async function changePassword(userId, newPassword) {
+  try {
+    // Get User
+    const { user } = await import('../user/user.js');
+
+    // Gen Salt
+    const salt = await genSalt(10);
+
+    // Hash with Salt
+    const hashedPassword = await hash(newPassword, salt);
+
+    // Update user
+    return user.updateOne(
+      {
+        _id: userId,
+      },
+      {
+        $set: { password: hashedPassword },
+      }
+    );
+  } catch (error) {
+    console.log(error);
+  }
+}
+
+export async function register2FA(userId, secret) {
+  try {
+    // Get User
+    const { user } = await import('../user/user.js');
+
+    // Update user
+    return user.updateOne(
+      {
+        _id: userId,
+      },
+      {
+        $set: { authenticator: secret },
+      }
+    );
+  } catch (error) {
+    console.log(error);
   }
 }
