@@ -1,4 +1,4 @@
-import https from 'https'
+import https from 'https';
 import { fastify } from 'fastify';
 import fetch from 'cross-fetch';
 import fastifyStatic from '@fastify/static';
@@ -17,44 +17,44 @@ async function startApp() {
       root: path.join(__dirname, 'public'),
     });
 
-    app.get('/reset/:email/:exp/:token', {}, async (request, response) => {
-        return response.sendFile('reset.html')
-    })
+    app.get('/reset/:email/:exp/:token', {}, async (request, response) =>
+      response.sendFile('reset.html')
+    );
 
-    app.get('/2fa', {}, async (request, response) => {
-        return response.sendFile('2fa.html')
-    })
+    app.get('/2fa', {}, async (request, response) =>
+      response.sendFile('2fa.html')
+    );
 
     app.get('/verify/:email/:token', {}, async (request, response) => {
-        try {
-            const {email, token} = request.params;
+      try {
+        const { email, token } = request.params;
 
-            const values = {
-                email,
-                token,
-            }
+        const values = {
+          email,
+          token,
+        };
 
-            const httpsAgent = new https.Agent({rejectUnauthorized: false})
+        const httpsAgent = new https.Agent({ rejectUnauthorized: false });
 
-            const res = await fetch('https://api.beef.dev/api/verify', {
-                method: 'POST',
-                body: JSON.stringify(values),
-                credentials: 'include',
-                agent: httpsAgent,
-                headers: {
-                  'Content-type': 'application/json; charset=UTF-8',
-                },
-              });
+        const res = await fetch('https://api.beef.dev/api/verify', {
+          method: 'POST',
+          body: JSON.stringify(values),
+          credentials: 'include',
+          agent: httpsAgent,
+          headers: {
+            'Content-type': 'application/json; charset=UTF-8',
+          },
+        });
 
-              if(res.status === 200) {
-                return response.redirect('/')
-              }
-
-              response.code(401).send()
-        } catch (error) {
-            console.error(error);
-            response.code(401).send()
+        if (res.status === 200) {
+          return response.redirect('/');
         }
+
+        response.code(401).send();
+      } catch (error) {
+        console.error(error);
+        response.code(401).send();
+      }
     });
 
     const PORT = 5000;
