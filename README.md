@@ -125,9 +125,9 @@ You will need Node, Npm and Caddy preinstalled before running the program.
 👤 Austin Carles
 
 - Linkedin: [@carlescoding](https://www.linkedin.com/in/carlescoding/)
-- Github: [@Beefymuffins](https://github.com/Beefymuffins)
+- Github: [@Beefymuffins](https://github.com/CarlesCoding)
 
-Project Link: [https://github.com/Beefymuffins/node-auth-2fa](https://github.com/Beefymuffins/node-auth-2fa)
+Project Link: [https://github.com/Beefymuffins/node-auth-2fa](https://github.com/CarlesCoding/node-auth-2fa)
 
 <!-- Acknowledgments  -->
 
